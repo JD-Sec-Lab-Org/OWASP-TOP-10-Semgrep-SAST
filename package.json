@@ -1,0 +1,16 @@
+{
+  "name": "jdsec-ultimate-lab-v2",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "init-db": "node scripts/init-db.js"
+  },
+  "dependencies": {
+    "next": "13.4.10",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "sqlite3": "5.1.6",
+    "react-icons": "4.9.0"
+  }
+}
