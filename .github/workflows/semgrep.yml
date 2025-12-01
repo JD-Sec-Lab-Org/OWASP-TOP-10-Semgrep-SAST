@@ -1,1 +1,73 @@
+name: Semgrep CI
 
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  semgrep:
+    name: Semgrep SAST Scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Semgrep
+        run: |
+          pip install semgrep
+
+      - name: Run Semgrep with Quality Gate
+        id: semgrep_scan
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          # Run scan with multiple rulepacks + custom rules
+          semgrep scan \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --config p/terraform \
+            --config p/docker \
+            --config .semgrep/rules.yaml \
+            --sarif --output semgrep.sarif \
+            --json --output-format=json --output=semgrep.json \
+            --severity=ERROR || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+
+      - name: Upload SARIF to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+
+      - name: Upload raw JSON report (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep.json
+
+      - name: Upload results to Semgrep Cloud Platform
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          semgrep ci \
+            --publish-token="${SEMGREP_APP_TOKEN}" \
+            --sarif semgrep.sarif \
+            --json semgrep.json \
+            --verbose
+
+      - name: Fail pipeline if High/Critical found
+        if: env.SEMGREP_FAILED == 'true'
+        run: |
+          echo "❌ Semgrep found High or Critical vulnerabilities. Failing CI."
+          exit 1
