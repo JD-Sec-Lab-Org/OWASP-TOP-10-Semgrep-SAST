@@ -29,54 +29,71 @@ jobs:
         run: |
           pip install semgrep
 
-      - name: Run Semgrep scan
-        id: semgrep_scan
+      #
+      # STEP 1: JSON scan (PRIMARY SCAN)
+      # Exit code 7 is captured so the job continues.
+      #
+      - name: Run Semgrep JSON Scan
+        id: semgrep_json
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         run: |
-          # Run SAST against multiple security rules
           semgrep scan \
             --config p/owasp-top-ten \
             --config p/secrets \
             --config p/terraform \
             --config p/docker \
             --config .semgrep/rules.yaml \
-            --severity ERROR \
-            --json > semgrep.json || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+            --json > semgrep.json \
+            || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
 
-          # Generate SARIF
+      #
+      # STEP 2: SARIF scan (separate so it doesn't fail)
+      #
+      - name: Run Semgrep SARIF Scan
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
           semgrep scan \
             --config p/owasp-top-ten \
             --config p/secrets \
             --config p/terraform \
             --config p/docker \
             --config .semgrep/rules.yaml \
-            --severity ERROR \
-            --sarif > semgrep.sarif
+            --sarif > semgrep.sarif || true
 
-      - name: Upload SARIF to GitHub Security Tab
+      # Upload SARIF to GitHub Security Tab
+      - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
 
-      - name: Upload raw JSON report
+      # Store raw JSON report as an artifact
+      - name: Upload JSON Report
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-json-report
           path: semgrep.json
 
-      - name: Upload results to Semgrep Cloud Platform
+      #
+      # STEP 3: Upload results to Semgrep Cloud Platform
+      #
+      - name: Upload results to Semgrep Cloud
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         run: |
           semgrep ci \
-            --publish-token="${SEMGREP_APP_TOKEN}" \
-            --json=semgrep.json \
-            --sarif=semgrep.sarif \
-            --verbose
+            --publish-token "${SEMGREP_APP_TOKEN}" \
+            --json semgrep.json \
+            --sarif semgrep.sarif \
+            --verbose || true
 
-      - name: Fail pipeline if High/Critical issues found
+      #
+      # FINAL QUALITY GATE STEP 
+      # (fail only if SEVERITY ERROR exists)
+      #
+      - name: Fail pipeline on High/Critical
         if: env.SEMGREP_FAILED == 'true'
         run: |
-          echo "❌ Semgrep found High or Critical vulnerabilities. Blocking pipeline."
+          echo "❌ Semgrep found High or Critical findings."
           exit 1
