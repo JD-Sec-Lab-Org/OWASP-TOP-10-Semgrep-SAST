@@ -4,7 +4,7 @@ const db = new sqlite3.Database("./database/demo.db");
 export default function handler(req, res) {
   const id = req.query.id;
 
-  // ❌ SQL Injection vulnerability intentionally kept
+  //  SQL Injection vulnerability intentionally kept
   const query = "SELECT id, email, name FROM users WHERE id = " + id;
 
   db.get(query, (err, row) => {
