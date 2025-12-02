@@ -4,7 +4,7 @@ const db = new sqlite3.Database("./database/demo.db");
 export default function handler(req, res) {
   const { email, password, next } = req.body || {};
 
-  // ❌ VULNERABLE SQL (login bypass enabled)
+  //  VULNERABLE SQL (login bypass enabled)
   const query = "SELECT * FROM users WHERE email = '" + email + "'";
 
   db.get(query, (err, user) => {
@@ -13,7 +13,7 @@ export default function handler(req, res) {
     }
 
     // ======================================================
-    // 🔥 LOGIN BYPASS CONDITION
+    //  LOGIN BYPASS CONDITION
     // ======================================================
     // If attacker enters:  ' OR '1'='1
     // Then user becomes FIRST record in database
@@ -34,7 +34,7 @@ export default function handler(req, res) {
       user = { id: 1, email: "student@jdsecacademy.com", name: "JDSEC Student" };
     }
 
-    // ❌ Password check skipped on SQL injection
+    // Password check skipped on SQL injection
     if (!isSQLi && user.password !== password) {
       return res.json({
         success: false,
