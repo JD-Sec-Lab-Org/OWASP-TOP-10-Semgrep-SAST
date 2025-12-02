@@ -22,7 +22,7 @@ export default function handler(req, res) {
 
     return res.json({
       auth: true,
-      ok: true,   // ✅ REQUIRED for dashboard + profile
+      ok: true,   //  REQUIRED for dashboard + profile
       user: {
         id: user.id,
         email: user.email,
