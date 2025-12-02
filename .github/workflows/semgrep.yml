@@ -18,20 +18,46 @@ jobs:
         run: |
           python3 -m pip install semgrep
 
-      # ======================================
-      # SEMGREP CI (AUTO PUBLISH TO PORTAL)
-      # ======================================
-      - name: Run Semgrep CI
+      # ====================================================
+      # RUN SEMGREP CI + SAVE JSON RESULTS FOR QUALITY GATE
+      # ====================================================
+      - name: Run Semgrep CI (with JSON output)
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         run: |
-          semgrep ci --metrics=off
+          semgrep ci --json --output semgrep-results.json --metrics=off
 
-      # ==============================
-      # QUALITY GATE
-      # ==============================
-      - name: Quality Gate
-        if: failure()    # semgrep CI failed (findings)
+      - name: Upload Semgrep JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+
+      # ====================================================
+      # CUSTOM QUALITY GATE (FAIL ON HIGH + CRITICAL)
+      # ====================================================
+      - name: Quality Gate - Fail on High or Critical Findings
         run: |
-          echo "❌ High or Critical vulnerabilities found!"
+          HIGH_COUNT=$(jq '[.results[] | select(.extra.severity == "HIGH")] | length' semgrep-results.json)
+          CRITICAL_COUNT=$(jq '[.results[] | select(.extra.severity == "CRITICAL")] | length' semgrep-results.json)
+          
+          echo "High Findings: $HIGH_COUNT"
+          echo "Critical Findings: $CRITICAL_COUNT"
+
+          TOTAL=$((HIGH_COUNT + CRITICAL_COUNT))
+
+          if [ "$TOTAL" -gt 0 ]; then
+            echo " Quality Gate Failed: High/Critical findings detected!"
+            exit 1
+          else
+            echo " Quality Gate Passed: No High/Critical findings."
+          fi
+
+      # ====================================================
+      # FAIL WORKFLOW IF QUALITY GATE FAILS
+      # ====================================================
+      - name: Final Status
+        if: failure()
+        run: |
+          echo "❌ Workflow failed because High/Critical vulnerabilities were found."
           exit 1
