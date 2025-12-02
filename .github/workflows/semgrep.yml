@@ -29,31 +29,40 @@ jobs:
         run: |
           pip install semgrep
 
-      - name: Run Semgrep with Quality Gate
+      - name: Run Semgrep scan
         id: semgrep_scan
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         run: |
-          # Run scan with multiple rulepacks + custom rules
+          # Run SAST against multiple security rules
           semgrep scan \
             --config p/owasp-top-ten \
             --config p/secrets \
             --config p/terraform \
             --config p/docker \
             --config .semgrep/rules.yaml \
-            --sarif --output semgrep.sarif \
-            --json --output-format=json --output=semgrep.json \
-            --severity=ERROR || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+            --severity ERROR \
+            --json > semgrep.json || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+
+          # Generate SARIF
+          semgrep scan \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --config p/terraform \
+            --config p/docker \
+            --config .semgrep/rules.yaml \
+            --severity ERROR \
+            --sarif > semgrep.sarif
 
       - name: Upload SARIF to GitHub Security Tab
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
 
-      - name: Upload raw JSON report (artifact)
+      - name: Upload raw JSON report
         uses: actions/upload-artifact@v4
         with:
-          name: semgrep-report
+          name: semgrep-json-report
           path: semgrep.json
 
       - name: Upload results to Semgrep Cloud Platform
@@ -62,12 +71,12 @@ jobs:
         run: |
           semgrep ci \
             --publish-token="${SEMGREP_APP_TOKEN}" \
-            --sarif semgrep.sarif \
-            --json semgrep.json \
+            --json=semgrep.json \
+            --sarif=semgrep.sarif \
             --verbose
 
-      - name: Fail pipeline if High/Critical found
+      - name: Fail pipeline if High/Critical issues found
         if: env.SEMGREP_FAILED == 'true'
         run: |
-          echo "❌ Semgrep found High or Critical vulnerabilities. Failing CI."
+          echo "❌ Semgrep found High or Critical vulnerabilities. Blocking pipeline."
           exit 1
