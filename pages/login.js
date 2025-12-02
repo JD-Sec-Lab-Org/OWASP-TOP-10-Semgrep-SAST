@@ -30,7 +30,7 @@ export default function Login() {
     if (json.success) {
       router.push(json.redirect || "/dashboard");
     } else {
-      // ❌ XSS: server message is injected raw into DOM
+      //  XSS: server message is injected raw into DOM
       setMsg(json.message);
     }
   }
