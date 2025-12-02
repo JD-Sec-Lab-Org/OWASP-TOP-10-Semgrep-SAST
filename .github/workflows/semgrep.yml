@@ -3,43 +3,35 @@ name: Semgrep SAST Scan
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - dev
+    branches: [ main, dev ]
 
 jobs:
   semgrep:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-
       - name: Install Semgrep
         run: |
           python3 -m pip install semgrep
 
-      # ============================
-      # MAIN SEMGREP CI STEP
-      # ============================
+      # ======================================
+      # SEMGREP CI (AUTO PUBLISH TO PORTAL)
+      # ======================================
       - name: Run Semgrep CI
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         run: |
-          semgrep ci \
-            --publish-token "$SEMGREP_APP_TOKEN" \
-            --metrics=off
+          semgrep ci --metrics=off
 
-      # ======================================
-      # QUALITY GATE - FAIL ON SEVERE FINDINGS
-      # ======================================
+      # ==============================
+      # QUALITY GATE
+      # ==============================
       - name: Quality Gate
-        if: failure()    # semgrep returned non-zero exit code
+        if: failure()    # semgrep CI failed (findings)
         run: |
           echo "❌ High or Critical vulnerabilities found!"
           exit 1
