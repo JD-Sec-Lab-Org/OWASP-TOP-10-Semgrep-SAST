@@ -1,6 +1,6 @@
 
 # JDSEC Academy – DevSecOps / OWASP Training Workbook
-
+ @
 This workbook accompanies the **JDSEC Academy Training Workspace** demo site.
 
 > This is DevSecOps / OWASP mature CI/CD and Web App Training demo website by jdsecAcademy.
@@ -210,5 +210,5 @@ Users are sometimes sent login links that return them to a specific area of the 
    - Quick fixes
    - Medium-term refactors
    - Longer-term process changes (e.g., threat modeling, security gates in CI/CD)
-
+#e
 ---
