@@ -7,7 +7,7 @@ export default function handler(req, res) {
   const sid = cookie.split("sid=")[1];
 
   if (!sid) {
-    return res.json({ auth: false, ok: false });
+    return res.json({ auth: false, ok: false }); #g
   }
 
   const parts = sid.split("-");
